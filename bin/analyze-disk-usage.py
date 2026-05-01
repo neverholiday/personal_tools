@@ -68,7 +68,8 @@ def check_and_clean_caches():
         ("Docker (system prune)", os.path.join(home, ".docker"), ["docker", "system", "prune", "-f"]),
         ("Cargo (Rust cache)", os.path.join(home, ".cargo", "registry"), None),
         ("Yarn cache", os.path.join(home, ".yarn", "berry", "cache"), ["yarn", "cache", "clean"]),
-        ("Python (pip cache)", os.path.join(home, ".cache", "pip"), ["pip", "cache", "purge"])
+        ("Python (pip cache)", os.path.join(home, ".cache", "pip"), ["pip", "cache", "purge"]),
+        ("Bun cache", os.path.join(home, ".bun", "install", "cache"), ["bun", "pm", "cache", "rm"])
     ]
 
     print("\n--- Developer Cache Usage ---")
