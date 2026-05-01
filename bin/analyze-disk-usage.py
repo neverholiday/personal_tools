@@ -32,54 +32,61 @@ def format_size(size: int) -> str:
         size /= 1024
     return f"{size:.2f} PB"
 
-def check_caches():
-    """Checks sizes of common developer caches."""
+def clean_path(path: str, name: str):
+    """Interactively deletes a path after user confirmation."""
+    if not os.path.exists(path):
+        return
+
+    response = input(f"Do you want to clean up {name} at {path}? (y/N): ").lower()
+    if response == 'y':
+        try:
+            if name.startswith("Docker"):
+                print(f"Running 'docker system prune -f'...")
+                subprocess.run(['docker', 'system', 'prune', '-f'], check=True)
+            elif os.path.isfile(path):
+                os.remove(path)
+                print(f"Removed file: {path}")
+            else:
+                shutil.rmtree(path)
+                print(f"Removed directory: {path}")
+        except Exception as e:
+            print(f"Error cleaning {path}: {e}")
+
+def check_and_clean_caches():
+    """Checks sizes of common developer caches and offers cleanup."""
     home = os.path.expanduser("~")
-    caches = {
-        "Node.js (npm cache)": os.path.join(home, ".npm"),
-        "Go (pkg cache)": os.path.join(home, "go", "pkg"),
-        "Docker (images/volumes - approx)": os.path.join(home, ".docker"),
-        "Cargo (Rust cache)": os.path.join(home, ".cargo", "registry"),
-        "Yarn cache": os.path.join(home, ".yarn", "berry", "cache"),
-        "Python (pip cache)": os.path.join(home, ".cache", "pip")
-    }
+    caches = [
+        ("Node.js (npm cache)", os.path.join(home, ".npm")),
+        ("Go (pkg cache)", os.path.join(home, "go", "pkg")),
+        ("Docker (system prune)", os.path.join(home, ".docker")),
+        ("Cargo (Rust cache)", os.path.join(home, ".cargo", "registry")),
+        ("Yarn cache", os.path.join(home, ".yarn", "berry", "cache")),
+        ("Python (pip cache)", os.path.join(home, ".cache", "pip"))
+    ]
 
     print("\n--- Developer Cache Usage ---")
-    for name, path in caches.items():
+    found_caches = []
+    for name, path in caches:
         size = get_size(path)
         if size > 0:
             print(f"{name}: {format_size(size)} ({path})")
+            found_caches.append((name, path))
         else:
             print(f"{name}: Not found or empty")
 
-def list_top_items(limit=5):
-    """Lists top N largest items in the home directory (non-hidden)."""
-    home = os.path.expanduser("~")
-    print(f"\n--- Top {limit} Largest Items in {home} ---")
-    
-    items = []
-    try:
-        # We list directories and files, skipping hidden ones to keep it relevant to user data
-        for entry in os.scandir(home):
-            if not entry.name.startswith('.'):
-                size = get_size(entry.path)
-                items.append((entry.name, size))
-    except PermissionError:
-        pass
-
-    items.sort(key=lambda x: x[1], reverse=True)
-    
-    for name, size in items[:limit]:
-        print(f"{format_size(size)}: {name}")
+    if found_caches:
+        print("\n--- Cache Cleanup ---")
+        for name, path in found_caches:
+            clean_path(path, name)
 
 def main():
-    print("Disk Usage Analysis Tool")
-    print("=========================")
+    print("Disk Usage Analysis & Cleanup Tool")
+    print("===================================")
     
-    check_caches()
+    check_and_clean_caches()
     list_top_items()
     
-    print("\nNote: Please review the items above and delete them manually if they are no longer needed.")
+    print("\nNote: Please review the top items above and handle them manually if needed.")
 
 if __name__ == "__main__":
     main()
