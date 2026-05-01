@@ -32,17 +32,23 @@ def format_size(size: int) -> str:
         size /= 1024
     return f"{size:.2f} PB"
 
-def clean_path(path: str, name: str):
-    """Interactively deletes a path after user confirmation."""
-    if not os.path.exists(path):
+def clean_path(path: str, name: str, command: List[str] = None):
+    """Cleans up a cache using a specific command or interactive deletion."""
+    if not os.path.exists(path) and not command:
         return
 
-    response = input(f"Do you want to clean up {name} at {path}? (y/N): ").lower()
+    msg = f"Do you want to clean up {name}?"
+    if command:
+        msg += f" (Runs: {' '.join(command)})"
+    else:
+        msg += f" (Path: {path})"
+    
+    response = input(f"{msg} (y/N): ").lower()
     if response == 'y':
         try:
-            if name.startswith("Docker"):
-                print(f"Running 'docker system prune -f'...")
-                subprocess.run(['docker', 'system', 'prune', '-f'], check=True)
+            if command:
+                print(f"Running '{' '.join(command)}'...")
+                subprocess.run(command, check=True)
             elif os.path.isfile(path):
                 os.remove(path)
                 print(f"Removed file: {path}")
@@ -50,34 +56,35 @@ def clean_path(path: str, name: str):
                 shutil.rmtree(path)
                 print(f"Removed directory: {path}")
         except Exception as e:
-            print(f"Error cleaning {path}: {e}")
+            print(f"Error cleaning {name}: {e}")
 
 def check_and_clean_caches():
     """Checks sizes of common developer caches and offers cleanup."""
     home = os.path.expanduser("~")
+    # Format: (DisplayName, Path, CleanupCommand)
     caches = [
-        ("Node.js (npm cache)", os.path.join(home, ".npm")),
-        ("Go (pkg cache)", os.path.join(home, "go", "pkg")),
-        ("Docker (system prune)", os.path.join(home, ".docker")),
-        ("Cargo (Rust cache)", os.path.join(home, ".cargo", "registry")),
-        ("Yarn cache", os.path.join(home, ".yarn", "berry", "cache")),
-        ("Python (pip cache)", os.path.join(home, ".cache", "pip"))
+        ("Node.js (npm cache)", os.path.join(home, ".npm"), ["npm", "cache", "clean", "--force"]),
+        ("Go (pkg cache)", os.path.join(home, "go", "pkg"), ["go", "clean", "-modcache"]),
+        ("Docker (system prune)", os.path.join(home, ".docker"), ["docker", "system", "prune", "-f"]),
+        ("Cargo (Rust cache)", os.path.join(home, ".cargo", "registry"), None),
+        ("Yarn cache", os.path.join(home, ".yarn", "berry", "cache"), ["yarn", "cache", "clean"]),
+        ("Python (pip cache)", os.path.join(home, ".cache", "pip"), ["pip", "cache", "purge"])
     ]
 
     print("\n--- Developer Cache Usage ---")
     found_caches = []
-    for name, path in caches:
+    for name, path, cmd in caches:
         size = get_size(path)
         if size > 0:
             print(f"{name}: {format_size(size)} ({path})")
-            found_caches.append((name, path))
+            found_caches.append((name, path, cmd))
         else:
             print(f"{name}: Not found or empty")
 
     if found_caches:
         print("\n--- Cache Cleanup ---")
-        for name, path in found_caches:
-            clean_path(path, name)
+        for name, path, cmd in found_caches:
+            clean_path(path, name, cmd)
 
 def list_top_items():
     """Lists the top 5 largest items in the home directory."""
