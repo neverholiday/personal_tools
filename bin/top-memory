@@ -1,0 +1,4 @@
+#!/bin/bash
+# Purpose: Show current memory stats and top 10 processes by memory usage on macOS
+# Usage: top-memory
+top -l 1 -o mem -n 10
