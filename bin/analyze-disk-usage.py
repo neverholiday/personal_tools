@@ -79,6 +79,48 @@ def check_and_clean_caches():
         for name, path in found_caches:
             clean_path(path, name)
 
+def list_top_items():
+    """Lists the top 5 largest items in the home directory."""
+    home = os.path.expanduser("~")
+    print(f"\n--- Top 5 Largest Items in {home} ---")
+    try:
+        # -k for kilobytes, -d 1 for max-depth 1
+        # We use check=False because du may return non-zero if some directories are inaccessible
+        result = subprocess.run(
+            ['du', '-k', '-d', '1', home], 
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            encoding='utf-8',
+            check=False
+        )
+        
+        output = result.stdout
+        lines = output.strip().split('\n')
+        items = []
+        for line in lines:
+            parts = line.split('\t')
+            if len(parts) == 2:
+                try:
+                    size_kb = int(parts[0])
+                    items.append((size_kb * 1024, parts[1]))
+                except ValueError:
+                    continue
+        
+        # Sort by size descending
+        items.sort(key=lambda x: x[0], reverse=True)
+        
+        count = 0
+        for size, path in items:
+            # Skip the home directory itself which is usually the largest
+            if os.path.abspath(path) == os.path.abspath(home):
+                continue
+            print(f"{format_size(size)}: {path}")
+            count += 1
+            if count >= 5:
+                break
+    except Exception as e:
+        print(f"Error listing top items: {e}")
+
 def main():
     print("Disk Usage Analysis & Cleanup Tool")
     print("===================================")
